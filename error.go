@@ -115,7 +115,7 @@ func wrapErr(err error, message string) error {
 	return e
 }
 
-// Inner returns the inner error from a message if it has one or nil otherwise.
+// GetInner returns the inner error from a message if it has one or nil otherwise.
 func GetInner(err error) error {
 	if e, ok := err.(*Error); ok {
 		return e.Inner
