@@ -31,9 +31,9 @@ func (e *Error) error(depth int) string {
 
 	if e.Inner != nil {
 		if inner, ok := e.Inner.(*Error); ok {
-			separator := fmt.Sprintf("\n%s", strings.Repeat(separator, depth+1))
+			repeatedSep := fmt.Sprintf("\n%s", strings.Repeat(separator, depth+1))
 			if !inner.isZero() {
-				pad(b, separator)
+				pad(b, repeatedSep)
 				b.WriteString(inner.error(depth + 1))
 			}
 		} else {
@@ -113,22 +113,4 @@ func wrapErr(err error, message string) error {
 	e.Inner = err
 	e.StackTrace = getStack()
 	return e
-}
-
-// GetInner returns the inner error from a message if it has one or nil otherwise.
-func GetInner(err error) error {
-	if e, ok := err.(*Error); ok {
-		return e.Inner
-	}
-
-	return nil
-}
-
-// GetStackTrace returns the StackTrace from an error message if it has one or nil otherwise.
-func GetStackTrace(err error) *StackTrace {
-	if e, ok := err.(*Error); ok {
-		return e.StackTrace
-	}
-
-	return nil
 }

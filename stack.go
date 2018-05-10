@@ -7,10 +7,12 @@ import (
 	"strings"
 )
 
-var callerSkipLevel int
+var DefaultCallerSkipLevel = 4
+
+var callerSkipLevel = DefaultCallerSkipLevel
 
 // SetCallerSkipLevel sets the number of callers to skip when building a stack frame.
-// By default it is set to 0, causing all stack frames to originate at the point where
+// By default it is set to 4, causing all stack frames to originate at the point where
 // errx.New, errx.Errorf, errx.Wrap, or errx.Wrapf was called.
 //
 // If any of these functions is wrapped, SetCallerSkipLevel should be called with the
@@ -22,7 +24,9 @@ var callerSkipLevel int
 // SetCallerSkipLevel should only be called once. It is not goroutine safe and is intended
 // to be set as part of an initialization routine.
 func SetCallerSkipLevel(level int) {
-	callerSkipLevel = level
+	if level > 0 {
+		callerSkipLevel = level
+	}
 }
 
 type StackFrame struct {
@@ -54,7 +58,7 @@ func getStack() *StackTrace {
 	st := &StackTrace{}
 
 	var pcs [maxStackDepth]uintptr
-	n := runtime.Callers(4+callerSkipLevel, pcs[:])
+	n := runtime.Callers(callerSkipLevel, pcs[:])
 	for _, pc := range pcs[0:n] {
 		pcFunc := runtime.FuncForPC(pc)
 		name := pcFunc.Name()
