@@ -7,6 +7,24 @@ import (
 	"strings"
 )
 
+var callerSkipLevel int
+
+// SetCallerSkipLevel sets the number of callers to skip when building a stack frame.
+// By default it is set to 0, causing all stack frames to originate at the point where
+// errx.New, errx.Errorf, errx.Wrap, or errx.Wrapf was called.
+//
+// If any of these functions is wrapped, SetCallerSkipLevel should be called with the
+// number of wrapping functions.
+//
+// For example, if errx.New was wrapped in a helper function, e.g. SetupError(args...),
+// then SetCallerSkipLevel should be called with a value of 1.
+//
+// SetCallerSkipLevel should only be called once. It is not goroutine safe and is intended
+// to be set as part of an initialization routine.
+func SetCallerSkipLevel(level int) {
+	callerSkipLevel = level
+}
+
 type StackFrame struct {
 	Name            string
 	File            string
@@ -32,11 +50,11 @@ func (s *StackTrace) String() string {
 
 const maxStackDepth = 32
 
-func getStack(skip int) *StackTrace {
+func getStack() *StackTrace {
 	st := &StackTrace{}
 
 	var pcs [maxStackDepth]uintptr
-	n := runtime.Callers(4+skip, pcs[:])
+	n := runtime.Callers(4+callerSkipLevel, pcs[:])
 	for _, pc := range pcs[0:n] {
 		pcFunc := runtime.FuncForPC(pc)
 		name := pcFunc.Name()
