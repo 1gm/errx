@@ -114,3 +114,21 @@ func wrapErr(err error, message string) error {
 	e.StackTrace = getStack()
 	return e
 }
+
+// Inner returns the inner error from a message if it has one or nil otherwise.
+func GetInner(err error) error {
+	if e, ok := err.(*Error); ok {
+		return e.Inner
+	}
+
+	return nil
+}
+
+// GetStackTrace returns the StackTrace from an error message if it has one or nil otherwise.
+func GetStackTrace(err error) *StackTrace {
+	if e, ok := err.(*Error); ok {
+		return e.StackTrace
+	}
+
+	return nil
+}
