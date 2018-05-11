@@ -5,11 +5,15 @@ import (
 	"fmt"
 	"runtime"
 	"strings"
+	"sync"
 )
 
-var DefaultCallerSkipLevel = 4
+const DefaultCallerSkipLevel = 4
 
-var callerSkipLevel = DefaultCallerSkipLevel
+var (
+	callerOnce      sync.Once
+	callerSkipLevel = DefaultCallerSkipLevel
+)
 
 // SetCallerSkipLevel sets the number of callers to skip when building a stack frame.
 // By default it is set to 4, causing all stack frames to originate at the point where
@@ -24,9 +28,11 @@ var callerSkipLevel = DefaultCallerSkipLevel
 // SetCallerSkipLevel should only be called once. It is not goroutine safe and is intended
 // to be set as part of an initialization routine.
 func SetCallerSkipLevel(level int) {
-	if level > 0 {
-		callerSkipLevel = level
-	}
+	callerOnce.Do(func() {
+		if level > 0 {
+			callerSkipLevel = level
+		}
+	})
 }
 
 type StackFrame struct {
@@ -40,13 +46,11 @@ func (s *StackFrame) String() string {
 	return fmt.Sprintf("  at %s(%s:%d)\n", s.Name, s.TrimmedFileLine, s.Line)
 }
 
-type StackTrace struct {
-	Frames []StackFrame
-}
+type StackTrace []StackFrame
 
-func (s *StackTrace) String() string {
+func (s StackTrace) String() string {
 	b := new(bytes.Buffer)
-	for _, f := range s.Frames {
+	for _, f := range s {
 		b.WriteString(f.String())
 	}
 	return b.String()
@@ -54,8 +58,8 @@ func (s *StackTrace) String() string {
 
 const maxStackDepth = 32
 
-func getStack() *StackTrace {
-	st := &StackTrace{}
+func getStack() StackTrace {
+	var st StackTrace
 
 	var pcs [maxStackDepth]uintptr
 	n := runtime.Callers(callerSkipLevel, pcs[:])
@@ -64,7 +68,7 @@ func getStack() *StackTrace {
 		name := pcFunc.Name()
 		file, line := pcFunc.FileLine(pc)
 		trimmed := trimGOPATH(name, file)
-		st.Frames = append(st.Frames, StackFrame{name, file, trimmed, line})
+		st = append(st, StackFrame{name, file, trimmed, line})
 	}
 	return st
 }

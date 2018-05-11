@@ -6,69 +6,20 @@ import (
 	"strings"
 )
 
-func PrintMessages(err error) string {
-	if err == nil {
-		return ""
-	}
-
-	if e, ok := err.(*Error); ok {
-		return e.message(0)
-	}
-
-	return err.Error()
-}
-
-func PrintWithStack(err error) string {
-	if err == nil {
-		return ""
-	}
-
-	if e, ok := err.(*Error); ok {
-		return e.printStack(0)
-	}
-
-	return err.Error()
-}
-
-// Error wraps an printStack and has a message and stack trace associated with it.
+// Error wraps an error and has a message and stack trace associated with it.
 type Error struct {
-	Inner      error       `json:"inner,omitempty"`
-	Message    string      `json:"msg,omitempty"`
-	StackTrace *StackTrace `json:"stack,omitempty"`
+	Inner      error
+	Message    string
+	StackTrace StackTrace
 }
 
-// Error returns a formatted error string, including all inner errors.
+// Error returns an error string, including all inner errors, each separated by
+// a ': '. E.g. "outer message: inner message: second inner message"
 func (e *Error) Error() string {
-	return e.message(0)
+	return e.error(0, ": ", false)
 }
 
-func (e *Error) message(depth int) string {
-	b := new(bytes.Buffer)
-	if e.Message != "" {
-		pad(b, " ")
-		b.WriteString(e.Message)
-	}
-
-	if e.Inner != nil {
-		if inner, ok := e.Inner.(*Error); ok {
-			if !inner.isZero() {
-				pad(b, ": ")
-				b.WriteString(inner.message(depth + 1))
-			}
-		} else {
-			pad(b, ": ")
-			b.WriteString(e.Inner.Error())
-		}
-	}
-
-	return b.String()
-}
-
-func (e *Error) isZero() bool {
-	return e.Inner == nil && e.Message == "" && e.StackTrace == nil
-}
-
-func (e *Error) printStack(depth int) string {
+func (e *Error) error(depth int, separator string, printStack bool) string {
 	b := new(bytes.Buffer)
 	if e.Message != "" {
 		pad(b, padding)
@@ -77,18 +28,17 @@ func (e *Error) printStack(depth int) string {
 
 	if e.Inner != nil {
 		if inner, ok := e.Inner.(*Error); ok {
-			repeatedSep := fmt.Sprintf("\n%s", strings.Repeat(separator, depth+1))
 			if !inner.isZero() {
-				pad(b, repeatedSep)
-				b.WriteString(inner.printStack(depth + 1))
+				pad(b, separator)
+				b.WriteString(inner.error(depth+1, separator, printStack))
 			}
 		} else {
-			pad(b, padding)
+			pad(b, separator)
 			b.WriteString(e.Inner.Error())
 		}
 	}
 
-	if e.StackTrace != nil {
+	if e.StackTrace != nil && printStack {
 		b.WriteString("\n")
 		if depth > 0 {
 			prefix := strings.Repeat(separator, depth+1)
@@ -99,6 +49,10 @@ func (e *Error) printStack(depth int) string {
 	}
 
 	return b.String()
+}
+
+func (e *Error) isZero() bool {
+	return e.Inner == nil && e.Message == "" && e.StackTrace == nil
 }
 
 func pad(b *bytes.Buffer, str string) {
@@ -113,26 +67,26 @@ const (
 	separator = "  "
 )
 
-// New creates a new printStack with a stack trace at the point which New was called,
-// a message, and a nil inner printStack.
+// New creates a new error with a stack trace at the point which New was called,
+// a message, and a nil inner error.
 func New(message string) error {
 	return newErr(message)
 }
 
-// Errorf creates a new printStack with a stack trace at the point which Errorf was called,
-// a formatted message, and a nil inner printStack.
+// Errorf creates a new error with a stack trace at the point which Errorf was called,
+// a formatted message, and a nil inner error.
 func Errorf(format string, args ...interface{}) error {
 	return newErr(fmt.Sprintf(format, args...))
 }
 
-// Wrap wraps an existing printStack with a message. If the inner printStack is an errx.Error, then
+// Wrap wraps an existing error with a message. If the inner error is an errx.Error, then
 // no stack trace is added, otherwise a stack trace is captured at the point which Wrap
 // was called.
 func Wrap(err error, message string) error {
 	return wrapErr(err, message)
 }
 
-// Wrapf wraps an existing printStack with a formatted message. If the inner printStack is an
+// Wrapf wraps an existing error with a formatted message. If the inner error is an
 // errx.Error, then no stack trace is added, otherwise a stack trace is captured at
 // the point which Wrapf was called.
 func Wrapf(err error, format string, args ...interface{}) error {
@@ -151,8 +105,8 @@ func wrapErr(err error, message string) error {
 	e := &Error{Message: message}
 
 	if inner, ok := err.(*Error); ok {
-		copy := *inner
-		e.Inner = &copy
+		copied := *inner
+		e.Inner = &copied
 		return e
 	}
 
