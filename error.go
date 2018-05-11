@@ -19,6 +19,18 @@ func (e *Error) Error() string {
 	return e.error(0, ": ", false)
 }
 
+func (e *Error) Format(f fmt.State, c rune) {
+	if c == 'v' {
+		fmt.Fprint(f, e.error(0, ": ", true))
+	} else if c == 's' {
+		if f.Flag('-') {
+			fmt.Fprint(f, e.Message)
+		} else {
+			fmt.Fprint(f, e.error(0, ": ", false))
+		}
+	}
+}
+
 func (e *Error) error(depth int, separator string, printStack bool) string {
 	b := new(bytes.Buffer)
 	if e.Message != "" {
