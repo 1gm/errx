@@ -35,15 +35,20 @@ func SetCallerSkipLevel(level int) {
 	})
 }
 
+// StackFrame is a description of a function in a stack trace
 type StackFrame struct {
-	Name            string
-	File            string
-	TrimmedFileLine string
-	Line            int
+	// FunctionName is the function which created this stack frame.
+	FunctionName string
+	// FileName is the file in which the function exists as an absolute path (includes $GOPATH/src)
+	FileName string
+	// TrimmedFileName represents the FileName without the $GOPATH/src prepended
+	TrimmedFileName string
+	// Line is the line number associated with the stack frame
+	Line int
 }
 
 func (s *StackFrame) String() string {
-	return fmt.Sprintf("  at %s(%s:%d)\n", s.Name, s.TrimmedFileLine, s.Line)
+	return fmt.Sprintf("  at %s(%s:%d)\n", s.FunctionName, s.TrimmedFileName, s.Line)
 }
 
 type StackTrace []StackFrame
@@ -66,9 +71,9 @@ func getStack() StackTrace {
 	for _, pc := range pcs[0:n] {
 		pcFunc := runtime.FuncForPC(pc)
 		name := pcFunc.Name()
-		file, line := pcFunc.FileLine(pc)
-		trimmed := trimGOPATH(name, file)
-		st = append(st, StackFrame{name, file, trimmed, line})
+		fileName, line := pcFunc.FileLine(pc)
+		trimmed := trimGOPATH(name, fileName)
+		st = append(st, StackFrame{FunctionName: name, FileName: fileName, TrimmedFileName: trimmed, Line: line})
 	}
 	return st
 }

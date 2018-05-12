@@ -31,6 +31,8 @@ func (e *Error) Format(f fmt.State, c rune) {
 	}
 }
 
+const padding = " "
+
 func (e *Error) error(depth int, separator string, printStack bool) string {
 	b := new(bytes.Buffer)
 	if e.Message != "" {
@@ -73,11 +75,6 @@ func pad(b *bytes.Buffer, str string) {
 	}
 	b.WriteString(str)
 }
-
-const (
-	padding   = " "
-	separator = "  "
-)
 
 // New creates a new error with a stack trace at the point which New was called,
 // a message, and a nil inner error.
