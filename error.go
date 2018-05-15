@@ -70,9 +70,7 @@ import (
 // Error wraps an error and has a message and stack trace associated with it.
 // It implements the fmt.Formatter interface and responds to different format verbs and flags.
 //
-// Example:
-//
-//
+// To print with stack traces use %v, %s. To omit stack traces use %-v, %-s.
 type Error struct {
 	// Inner represents the inner error of this error, it can be nil.
 	Inner error
