@@ -51,6 +51,8 @@ func (s *StackFrame) String() string {
 	return fmt.Sprintf("  at %s(%s:%d)\n", s.FunctionName, s.TrimmedFileName, s.Line)
 }
 
+// StackTrace represents a slice of StackFrame, a StackTrace will usually contain at least 2 elements,
+// however, it should be treated as if it could contain zero StackFrames
 type StackTrace []StackFrame
 
 func (s StackTrace) String() string {
@@ -61,7 +63,11 @@ func (s StackTrace) String() string {
 	return b.String()
 }
 
-const maxStackDepth = 32
+const (
+	sep           = "/"
+	sepLen        = len(sep)
+	maxStackDepth = 32
+)
 
 func getStack() StackTrace {
 	var st StackTrace
@@ -77,11 +83,6 @@ func getStack() StackTrace {
 	}
 	return st
 }
-
-const (
-	sep    = "/"
-	sepLen = len(sep)
-)
 
 // This code is taken from pkg/errors and modified very lightly.
 // Copyright (c) 2015, Dave Cheney <dave@cheney.net>
