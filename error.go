@@ -1,3 +1,64 @@
+// Package errx implements error utilities which make adding context to errors more developer friendly
+// while also preserving the original error.
+//
+// Add context to an error
+//
+//		// using errx.Wrap
+//		_, err := someOperationThatMayErr()
+//		if err != nil {
+//			return errx.Wrap(err, "someOperationThatMayErr() failed")
+//		}
+//
+//		// using errx.Wrapf
+//		_, err := someOperationThatMayErr()
+//		if err != nil {
+//			return errx.Wrapf(err, "%s failed", "someOperationThatMayErr()")
+//		}
+//
+// Create an error
+//
+//		// using errx.New
+//		if ok := someOperation(); !ok {
+//			return errx.New("someOperation failed")
+//		}
+//
+//		// using errx.Errorf
+//		if ok := someOperation(); !ok {
+//			return errx.Errorf("%s failed", "someOperation()")
+//		}
+//
+// Printing error messages with stack traces:
+//
+//		err := errx.Wrap(errx.Wrap(errors.New("inner"), "middle"), "outer")
+//		log.Printf("%v", err) // or use %s
+//
+// results in the following:
+//
+//		outer: middle: inner
+//  	  at main.main(examples/main.go:13)
+//  	  at runtime.main(runtime/proc.go:207)
+//  	  at runtime.goexit(runtime/asm_amd64.s:2362)
+//
+// Printing error messages without stack traces:
+//
+//		err := errx.Wrap(errx.Wrap(errors.New("inner"), "middle"), "outer")
+//		log.Printf("%-v", err) // or use %-s
+//
+// results in the following:
+//
+//		outer: middle: inner
+//
+// Printing top most error message only:
+//
+//		err := errx.Wrap(errx.Wrap(errors.New("inner"), "middle"), "outer")
+//		if e, ok := err.(*errx.Error); ok {
+//			log.Print(e.Message)
+//		}
+//
+// results in the following:
+//
+//		outer
+//
 package errx
 
 import (
@@ -7,9 +68,17 @@ import (
 )
 
 // Error wraps an error and has a message and stack trace associated with it.
+// It implements the fmt.Formatter interface and responds to different format verbs and flags.
+//
+// Example:
+//
+//
 type Error struct {
-	Inner      error
-	Message    string
+	// Inner represents the inner error of this error, it can be nil.
+	Inner error
+	// Message represents the message associated with this error.
+	Message string
+	// StackTrace is the StackTrace of the inner most error, hoisted up into this error.
 	StackTrace StackTrace
 }
 
@@ -19,14 +88,19 @@ func (e *Error) Error() string {
 	return e.error(0, ": ", false)
 }
 
+// Format implements the fmt.Formatter interface.
 func (e *Error) Format(f fmt.State, c rune) {
 	if c == 'v' {
-		fmt.Fprint(f, e.error(0, ": ", true))
+		if f.Flag('-') {
+			fmt.Fprint(f, e.error(0, ": ", false))
+		} else {
+			fmt.Fprint(f, e.error(0, ": ", true))
+		}
 	} else if c == 's' {
 		if f.Flag('-') {
-			fmt.Fprint(f, e.Message)
-		} else {
 			fmt.Fprint(f, e.error(0, ": ", false))
+		} else {
+			fmt.Fprint(f, e.error(0, ": ", true))
 		}
 	}
 }
