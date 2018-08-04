@@ -5,34 +5,29 @@ import (
 	"fmt"
 	"runtime"
 	"strings"
-	"sync"
 )
 
-const DefaultCallerSkipLevel = 4
+const minCallerSkipLevel = 4
 
-var (
-	callerOnce      sync.Once
-	callerSkipLevel = DefaultCallerSkipLevel
-)
+var callerSkipLevel int
 
-// SetCallerSkipLevel sets the number of callers to skip when building a stack frame.
-// By default it is set to 4, causing all stack frames to originate at the point where
+// AdjustCallerSkipLevel sets the number of callers to skip when building a stack frame.
+// By default if this function is not called, all stack traces will originate at the point where
 // errx.New, errx.Errorf, errx.Wrap, or errx.Wrapf was called.
 //
-// If any of these functions is wrapped, SetCallerSkipLevel should be called with the
-// number of wrapping functions.
+// If any of these functions is wrapped, AdjustCallerSkipLevel should be called with the
+// number of wrapping functions. It is not goroutine safe and is intended to be set
+// as part of an initialization routine.
 //
 // For example, if errx.New was wrapped in a helper function, e.g. SetupError(args...),
-// then SetCallerSkipLevel should be called with a value of 1.
-//
-// SetCallerSkipLevel should only be called once. It is not goroutine safe and is intended
-// to be set as part of an initialization routine.
-func SetCallerSkipLevel(level int) {
-	callerOnce.Do(func() {
-		if level > 0 {
-			callerSkipLevel = level
-		}
-	})
+// then AdjustCallerSkipLevel should be called with a value of 1.
+func AdjustCallerSkipLevel(amt int) {
+	newCallerSkipLevel := callerSkipLevel + amt
+	if newCallerSkipLevel >= minCallerSkipLevel {
+		callerSkipLevel = newCallerSkipLevel
+	} else {
+		callerSkipLevel = minCallerSkipLevel
+	}
 }
 
 // StackFrame is a description of a function in a stack trace
@@ -73,7 +68,7 @@ func getStack() StackTrace {
 	var st StackTrace
 
 	var pcs [maxStackDepth]uintptr
-	n := runtime.Callers(callerSkipLevel, pcs[:])
+	n := runtime.Callers(baseCallerSkipLevel+callerSkipLevel, pcs[:])
 	for _, pc := range pcs[0:n] {
 		pcFunc := runtime.FuncForPC(pc)
 		name := pcFunc.Name()
