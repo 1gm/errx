@@ -3,53 +3,11 @@ package errx_test
 import (
 	"testing"
 
+	"os"
+	"path/filepath"
+
 	"github.com/1gm/errx"
 )
-
-func TestStackTrace_TopFrame(t *testing.T) {
-	var td = []struct {
-		e     *errx.Error
-		frame errx.StackFrame
-	}{
-		{
-			asError(errx.New("e")),
-			errx.StackFrame{
-				FunctionName:    "github.com/1gm/errx_test.TestStackTrace_TopFrame",
-				FileName:        "/home/george/go/src/github.com/1gm/errx/stack_test.go",
-				TrimmedFileName: "github.com/1gm/errx/stack_test.go",
-				Line:            15,
-			},
-		},
-		{
-			asError(fakeErrFunction()),
-			errx.StackFrame{
-				FunctionName:    "github.com/1gm/errx_test.fakeErrFunction",
-				FileName:        "/home/george/go/src/github.com/1gm/errx/stack_test.go",
-				TrimmedFileName: "github.com/1gm/errx/stack_test.go",
-				Line:            55,
-			},
-		},
-		{
-			asError(anonymousFuncGenError()),
-			errx.StackFrame{
-				FunctionName:    "github.com/1gm/errx_test.anonymousFuncGenError.func1",
-				FileName:        "/home/george/go/src/github.com/1gm/errx/stack_test.go",
-				TrimmedFileName: "github.com/1gm/errx/stack_test.go",
-				Line:            61,
-			},
-		},
-	}
-
-	for i, d := range td {
-		if d.e.StackTrace == nil {
-			t.Fatalf("[%d] expected stack trace but was nil", i)
-		}
-
-		if d.frame != d.e.StackTrace[0] {
-			t.Fatalf("[%d] expected frame to be %v but was %v", i, d.frame, d.e.StackTrace[0])
-		}
-	}
-}
 
 func fakeErrFunction() error {
 	e := errx.Wrap(errx.New("inner"), "outer")
@@ -61,4 +19,66 @@ func anonymousFuncGenError() error {
 		return errx.New("foobar")
 	}
 	return funcGen()
+}
+
+func genError() *errx.Error {
+	return asError(errx.New("e"))
+}
+
+func getAbsoluteStackTestFilePath(t *testing.T) string {
+	t.Helper()
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("%v: failed to get cwd", t.Name())
+	}
+	return filepath.Join(cwd, "stack_test.go")
+}
+
+func TestStackTrace_TopFrame(t *testing.T) {
+	// absolute path of the this file (stack_test.go)
+	stackTestFilePath := getAbsoluteStackTestFilePath(t)
+
+	var td = []struct {
+		e     *errx.Error
+		frame errx.StackFrame
+	}{
+		{
+			genError(),
+			errx.StackFrame{
+				FunctionName:    "github.com/1gm/errx_test.genError",
+				FileName:        stackTestFilePath,
+				TrimmedFileName: "github.com/1gm/errx/stack_test.go",
+				Line:            25,
+			},
+		},
+		{
+			asError(fakeErrFunction()),
+			errx.StackFrame{
+				FunctionName:    "github.com/1gm/errx_test.fakeErrFunction",
+				FileName:        stackTestFilePath,
+				TrimmedFileName: "github.com/1gm/errx/stack_test.go",
+				Line:            13,
+			},
+		},
+		{
+			asError(anonymousFuncGenError()),
+			errx.StackFrame{
+				FunctionName:    "github.com/1gm/errx_test.anonymousFuncGenError.func1",
+				FileName:        stackTestFilePath,
+				TrimmedFileName: "github.com/1gm/errx/stack_test.go",
+				Line:            19,
+			},
+		},
+	}
+
+	for i, d := range td {
+		if d.e.StackTrace == nil {
+			t.Errorf("[%d] expected stack trace but was nil", i)
+			continue
+		}
+
+		if d.frame != d.e.StackTrace[0] {
+			t.Errorf("[%d] expected frame to be %v but was %v", i, d.frame, d.e.StackTrace[0])
+		}
+	}
 }

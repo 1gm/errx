@@ -9,7 +9,7 @@ import (
 
 const minCallerSkipLevel = 4
 
-var callerSkipLevel int
+var callerSkipLevel = minCallerSkipLevel
 
 // AdjustCallerSkipLevel sets the number of callers to skip when building a stack frame.
 // By default if this function is not called, all stack traces will originate at the point where
@@ -68,7 +68,7 @@ func getStack() StackTrace {
 	var st StackTrace
 
 	var pcs [maxStackDepth]uintptr
-	n := runtime.Callers(baseCallerSkipLevel+callerSkipLevel, pcs[:])
+	n := runtime.Callers(callerSkipLevel, pcs[:])
 	for _, pc := range pcs[0:n] {
 		pcFunc := runtime.FuncForPC(pc)
 		name := pcFunc.Name()
